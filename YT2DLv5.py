@@ -7,7 +7,6 @@ import requests  # song info and image
 from PIL import Image  # song image from youtube modifier
 from io import BytesIO  # song image importer from the web
 import os  # to delete temporary image after
-import moviepy  # to convert from webp to mp3
 
 playlist = "https://www.youtube.com/playlist?list=PLG5Wd810mzkqNOoh-bK5j7pkS-wZew2-v"
 folder = "Result"
@@ -175,54 +174,6 @@ for video in playlist.videos:
         # go through custom modifications from the modifications file
         customData = json.load(file)
 
-        # try:
-        #     title = customData[YTtitle]["title"]
-        # except:
-        #     if ITtitle == None:
-        #         title = YTtitle
-        #     else:
-        #         title = ITtitle
-
-        # try:
-        #     artist = customData[YTtitle]["artist"]
-        # except:
-        #     if ITartist == None:
-        #         artist = YTartist
-        #     else:
-        #         artist = ITartist
-
-        # try:
-        #     year = customData[YTtitle]["year"]
-        # except:
-        #     if ITyear == None:
-        #         year = YTyear
-        #     else:
-        #         year = ITyear
-
-        # try:
-        #     album = customData[YTtitle]["album"]
-        # except:
-        #     if ITalbum == None:
-        #         album = "unknown; add in Modifications"
-        #     else:
-        #         album = ITalbum
-
-        # try:
-        #     genre = customData[YTtitle]["genre"]
-        # except:
-        #     if ITgenre == None:
-        #         genre = "unknown"
-        #     else:
-        #         genre = ITgenre
-
-        # try:
-        #     number = customData[YTtitle]["number"]
-        # except:
-        #     if ITnumber == None:
-        #         number = 0
-        #     else:
-        #         number = ITnumber
-
         # use custom title, if not use IT title, if not use YT title, and repeat
         title = customData.get(YTtitle, {}).get("title") or ITtitle or YTtitle
         artist = customData.get(YTtitle, {}).get("artist") or ITartist or YTartist
@@ -268,10 +219,35 @@ for video in playlist.videos:
 
             else:
                 # use YT video, and capture a frame for the album art
-                YouTube(link).streams.filter(only_video=True).order_by(
-                    "resolution"
-                ).desc().first().download(filename="temp_image_vid.mp4")
-
+                max_retries = 3
+                retry_count = 0
+                while retry_count < max_retries:
+                    try:
+                        YouTube(link).streams.filter(only_video=True).order_by(
+                            "resolution"
+                        ).desc().first().download(filename="temp_image_vid.mp4")
+                        break
+                    except Exception as e:
+                        retry_count += 1
+                        if retry_count == max_retries:
+                            print(
+                                YouTube(link)
+                                .streams.filter(only_video=True)
+                                .order_by("resolution")
+                                .desc()
+                            )
+                            print(
+                                YouTube(link)
+                                .streams.filter(only_video=True)
+                                .order_by("resolution")
+                                .desc()
+                                .first()
+                            )
+                            print(
+                                f"Failed to download image for album art after {max_retries} attempts: {str(e)}"
+                            )
+                            raise
+                        print(f"Download attempt {retry_count} failed, retrying...")
                 video_capture = cv2.VideoCapture("temp_image_vid.mp4")
                 success, frame = video_capture.read()
 
@@ -323,16 +299,21 @@ for video in playlist.videos:
         except Exception as e:
             retry_count += 1
             if retry_count == max_retries:
-                print(f"Failed to download after {max_retries} attempts: {str(e)}")
+                print(
+                    f"Failed to download song audio after {max_retries} attempts: {str(e)}"
+                )
                 raise
             print(f"Download attempt {retry_count} failed, retrying...")
 
     # rename it, and put it in the folder
-    # print(title)
-    audio_edit = moviepy.AudioFileClip(f"{title}.webm")
-    audio_edit.write_audiofile(f"{folder}/{title}.mp3")
-    audio_edit.close()
-    os.remove(f"{title}.webm")
+    os.system(
+        f'ffmpeg -y -i "{title}.webm" -vn -ab 320k "{folder}/{title}.mp3" -loglevel quiet'  # -loglevel quiet
+    )
+    try:
+        os.remove(f"{title}.webm")
+    except Exception as exception:
+        print(f"filename: {title}")
+        print(f"error: {exception}")
 
     # add metadata to the file
     audiofile = music_tag.load_file(f"{folder}/{title}.mp3")

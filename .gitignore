@@ -1,5 +1,12 @@
 # Custom 3/25/25
 Ignore/
+# Custom 4/1/25
+Result/
+Console.txt
+couldNotFind.txt
+album_art.png
+Modifications.json
+*.webm
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
