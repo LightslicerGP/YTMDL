@@ -1,5 +1,7 @@
 # Youtube Playlist Downloader
 
+*This tool is intended to be used solely for educational and research purposes only.*
+
 ## Requirements
 
 This script requires ffmpeg to be installed on your system. It uses ffmpeg to convert downloaded videos to MP3 format using the following command: `ffmpeg -y -i "{title}.webm" -vn -ab 320k "{folder}/{title}.mp3" -loglevel quiet` and it requires ffmpeg, and helps remove not needing an import
